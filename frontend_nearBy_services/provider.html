@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Provider Dashboard — NearBy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e0d; --bg2: #181614; --card: #1e1c1a; --border: #2e2b27;
+    --amber: #f59e0b; --amber2: #fbbf24; --text: #f0ebe3; --muted: #8a857e;
+    --danger: #ef4444; --success: #22c55e; --warning: #f59e0b; --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+
+  nav {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 40px; border-bottom:1px solid var(--border);
+    background:rgba(15,14,13,0.95); position:sticky; top:0; z-index:50;
+  }
+  .logo { font-family:'DM Serif Display',serif; font-size:1.5rem; color:var(--amber); }
+  .logo span { color:var(--text); }
+  .logo a { text-decoration:none; }
+  .nav-right { display:flex; align-items:center; gap:12px; }
+  .user-pill { display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--border); padding:6px 12px 6px 8px; border-radius:100px; font-size:0.85rem; }
+  .avatar { width:28px; height:28px; border-radius:50%; background:var(--amber); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.7rem; color:#0f0e0d; }
+  .btn { padding:10px 22px; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:0.9rem; font-weight:500; cursor:pointer; border:none; transition:all 0.2s; }
+  .btn-sm { padding:7px 14px; font-size:0.82rem; }
+  .btn-primary { background:var(--amber); color:#0f0e0d; font-weight:600; }
+  .btn-primary:hover { background:var(--amber2); }
+  .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+  .btn-ghost:hover { color:var(--text); border-color:var(--muted); }
+  .btn-danger { background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid rgba(239,68,68,0.3); }
+  .btn-success { background:rgba(34,197,94,0.1); color:var(--success); border:1px solid rgba(34,197,94,0.3); }
+
+  .layout { display:grid; grid-template-columns:260px 1fr; flex:1; }
+
+  /* SIDEBAR */
+  .sidebar { border-right:1px solid var(--border); padding:32px 20px; background:var(--bg2); }
+  .sidebar-section { margin-bottom:32px; }
+  .sidebar-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); font-weight:600; margin-bottom:10px; padding:0 8px; }
+  .sidebar-item {
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:8px;
+    cursor:pointer; font-size:0.88rem; color:var(--muted); transition:all 0.2s; text-decoration:none;
+  }
+  .sidebar-item:hover, .sidebar-item.active { background:var(--card); color:var(--text); }
+  .sidebar-item.active { color:var(--amber); }
+  .sidebar-item .icon { font-size:1rem; width:20px; text-align:center; }
+  .badge { background:var(--amber); color:#0f0e0d; font-size:0.68rem; font-weight:700; padding:1px 7px; border-radius:100px; margin-left:auto; }
+
+  /* MAIN */
+  .main { padding:40px; overflow-y:auto; }
+  .page-header { margin-bottom:36px; }
+  .page-header h1 { font-family:'DM Serif Display',serif; font-size:2rem; margin-bottom:6px; }
+  .page-header p { color:var(--muted); font-size:0.92rem; }
+
+  /* STATS */
+  .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:40px; }
+  .stat-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:24px; }
+  .stat-label { font-size:0.78rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); font-weight:600; margin-bottom:8px; }
+  .stat-value { font-family:'DM Serif Display',serif; font-size:2.4rem; }
+  .stat-sub { font-size:0.82rem; color:var(--muted); margin-top:4px; }
+  .stat-card.amber { border-color:rgba(245,158,11,0.3); background:rgba(245,158,11,0.04); }
+  .stat-card.amber .stat-value { color:var(--amber); }
+
+  /* TABS */
+  .tabs { display:flex; gap:4px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:4px; width:fit-content; margin-bottom:28px; }
+  .tab { padding:8px 20px; border-radius:7px; cursor:pointer; font-size:0.88rem; color:var(--muted); transition:all 0.2s; }
+  .tab.active { background:var(--amber); color:#0f0e0d; font-weight:600; }
+
+  /* SERVICE FORM */
+  .form-panel {
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:28px; margin-bottom:32px; display:none;
+  }
+  .form-panel.open { display:block; }
+  .form-panel h3 { font-size:1.1rem; font-weight:600; margin-bottom:20px; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .form-group { margin-bottom:0; }
+  .form-group label { display:block; font-size:0.82rem; color:var(--muted); margin-bottom:6px; font-weight:500; }
+  .form-group input, .form-group select {
+    width:100%; background:var(--bg2); border:1px solid var(--border); color:var(--text);
+    padding:12px 14px; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:0.9rem; outline:none;
+  }
+  .form-group input:focus, .form-group select:focus { border-color:var(--amber); }
+  .form-group input::placeholder { color:var(--muted); }
+  .form-actions { margin-top:20px; display:flex; gap:10px; }
+  .form-error { color:var(--danger); font-size:0.82rem; margin-top:10px; display:none; }
+
+  /* ITEMS */
+  .item-list { display:flex; flex-direction:column; gap:12px; }
+  .item-card {
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px 24px;
+    display:flex; align-items:center; gap:16px;
+  }
+  .item-icon { width:44px; height:44px; border-radius:10px; background:rgba(245,158,11,0.1); display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+  .item-body { flex:1; }
+  .item-title { font-weight:600; margin-bottom:2px; }
+  .item-meta { color:var(--muted); font-size:0.83rem; }
+  .item-actions { display:flex; gap:8px; }
+
+  /* STATUS BADGE */
+  .status { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.8px; font-weight:600; padding:3px 10px; border-radius:100px; }
+  .status.pending { background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.3); }
+  .status.accept { background:rgba(34,197,94,0.1); color:var(--success); border:1px solid rgba(34,197,94,0.3); }
+  .status.complete { background:rgba(99,102,241,0.1); color:#818cf8; border:1px solid rgba(99,102,241,0.3); }
+
+  /* EMPTY */
+  .empty { text-align:center; padding:60px 20px; color:var(--muted); }
+  .empty-icon { font-size:2.5rem; margin-bottom:12px; opacity:0.4; }
+  .empty h3 { color:var(--text); margin-bottom:6px; }
+
+  /* TOAST */
+  .toast-container { position:fixed; bottom:24px; right:24px; display:flex; flex-direction:column; gap:10px; z-index:999; }
+  .toast { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 18px; font-size:0.88rem; min-width:240px; display:flex; align-items:center; gap:10px; animation:slideIn 0.3s ease; box-shadow:0 8px 24px rgba(0,0,0,0.4); }
+  .toast.success { border-left:3px solid var(--success); }
+  .toast.error { border-left:3px solid var(--danger); }
+  @keyframes slideIn { from { transform:translateX(100%); opacity:0; } }
+  .spinner { width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--amber); border-radius:50%; animation:spin 0.7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* AUTH GATE */
+  .auth-gate { display:flex; flex:1; align-items:center; justify-content:center; }
+  .auth-gate-card { text-align:center; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:48px 40px; max-width:400px; }
+  .auth-gate-card h2 { font-family:'DM Serif Display',serif; font-size:1.8rem; margin-bottom:12px; }
+  .auth-gate-card p { color:var(--muted); margin-bottom:24px; }
+
+  @media(max-width:768px) {
+    .layout { grid-template-columns:1fr; }
+    .sidebar { display:none; }
+    .stats-grid { grid-template-columns:1fr; }
+    .form-grid { grid-template-columns:1fr; }
+    .main { padding:24px 16px; }
+    nav { padding:16px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo"><a href="index.html">Near<span>By</span></a></div>
+  <div class="nav-right">
+    <div class="user-pill" id="userPill">
+      <div class="avatar" id="userAvatar">P</div>
+      <span id="userName">Provider</span>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.8rem;padding:2px 6px" onclick="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="authGate" style="display:none; flex:1; align-items:center; justify-content:center">
+  <div class="auth-gate-card">
+    <h2>Access denied</h2>
+    <p>This dashboard is only for service providers. Please log in with a provider account.</p>
+    <a href="index.html" class="btn btn-primary">← Back to home</a>
+  </div>
+</div>
+
+<div class="layout" id="dashLayout">
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Dashboard</div>
+      <a class="sidebar-item active" onclick="showTab('services')">
+        <span class="icon">🔧</span> My Services
+      </a>
+      <a class="sidebar-item" onclick="showTab('bookings')">
+        <span class="icon">📋</span> Bookings
+        <span class="badge" id="pendingBadge" style="display:none">0</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Account</div>
+      <a class="sidebar-item" href="index.html">
+        <span class="icon">🗺</span> Find Services
+      </a>
+      <a class="sidebar-item" onclick="logout()">
+        <span class="icon">↩</span> Logout
+      </a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <!-- SERVICES TAB -->
+    <div id="tabServices">
+      <div class="page-header">
+        <h1>My Services</h1>
+        <p>Manage the services you offer to customers nearby</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card amber">
+          <div class="stat-label">Active services</div>
+          <div class="stat-value" id="statServices">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total bookings</div>
+          <div class="stat-value" id="statBookings">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pending requests</div>
+          <div class="stat-value" id="statPending">—</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <button class="btn btn-primary" onclick="toggleForm()">+ Add new service</button>
+      </div>
+
+      <div class="form-panel" id="serviceForm">
+        <h3>Add a new service</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Service name</label>
+            <input type="text" id="svcName" placeholder="e.g. Pipe Repair, House Cleaning..." />
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <select id="svcCategory">
+              <option value="">Select category</option>
+              <option>Plumbing</option>
+              <option>Electrical</option>
+              <option>Cleaning</option>
+              <option>Carpentry</option>
+              <option>Painting</option>
+              <option>AC Repair</option>
+              <option>Pest Control</option>
+              <option>Gardening</option>
+              <option>Security</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="text" id="svcLat" placeholder="e.g. 18.5204" />
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="text" id="svcLng" placeholder="e.g. 73.8567" />
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <button class="btn btn-ghost btn-sm" onclick="detectLocation()" type="button">📍 Auto-detect my location</button>
+        </div>
+        <div class="form-error" id="svcError"></div>
+        <div class="form-actions">
+          <button class="btn btn-primary" id="svcBtn" onclick="createService()">Create service</button>
+          <button class="btn btn-ghost" onclick="toggleForm()">Cancel</button>
+        </div>
+      </div>
+
+      <div id="myServicesList">
+        <div class="empty"><div class="empty-icon">🔧</div><h3>No services yet</h3><p>Add your first service above</p></div>
+      </div>
+    </div>
+
+    <!-- BOOKINGS TAB -->
+    <div id="tabBookings" style="display:none">
+      <div class="page-header">
+        <h1>Bookings</h1>
+        <p>Manage incoming booking requests from customers</p>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="filterBookings('pending', this)">Pending</div>
+        <div class="tab" onclick="filterBookings('accept', this)">Accepted</div>
+        <div class="tab" onclick="filterBookings('all', this)">All</div>
+      </div>
+
+      <div id="bookingsList">
+        <div class="empty"><div class="empty-icon">📋</div><h3>No bookings yet</h3><p>When customers book your services, they'll appear here</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const API = 'http://localhost:3000/api';
+let user = null;
+let token = null;
+let allBookings = [];
+
+function init() {
+  const saved = localStorage.getItem('nearby_user');
+  if (!saved) { showAuthGate(); return; }
+  try {
+    const data = JSON.parse(saved);
+    user = data.user;
+    token = data.accessToken;
+    if (user.role !== 'provider') { showAuthGate(); return; }
+    const initial = user.fullname?.[0]?.toUpperCase() || 'P';
+    document.getElementById('userAvatar').textContent = initial;
+    document.getElementById('userName').textContent = user.fullname?.split(' ')[0];
+    loadDashboard();
+  } catch(e) { showAuthGate(); }
+}
+
+function showAuthGate() {
+  document.getElementById('dashLayout').style.display = 'none';
+  document.getElementById('authGate').style.display = 'flex';
+}
+
+async function loadDashboard() {
+  // We'll show placeholders since there's no GET endpoint for provider's own services/bookings
+  // (the backend only has get by location). We'll load via location.
+  document.getElementById('statServices').textContent = '—';
+  document.getElementById('statBookings').textContent = '—';
+  document.getElementById('statPending').textContent = '—';
+}
+
+function showTab(tab) {
+  document.getElementById('tabServices').style.display = tab === 'services' ? 'block' : 'none';
+  document.getElementById('tabBookings').style.display = tab === 'bookings' ? 'block' : 'none';
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  event.currentTarget?.classList?.add('active');
+  if (tab === 'bookings') loadBookings();
+}
+
+function toggleForm() {
+  document.getElementById('serviceForm').classList.toggle('open');
+}
+
+function detectLocation() {
+  if (!navigator.geolocation) { showToast('Geolocation not supported', 'error'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    document.getElementById('svcLat').value = pos.coords.latitude.toFixed(6);
+    document.getElementById('svcLng').value = pos.coords.longitude.toFixed(6);
+    showToast('Location detected!', 'success');
+  }, () => showToast('Could not get location', 'error'));
+}
+
+async function createService() {
+  const name = document.getElementById('svcName').value.trim();
+  const category = document.getElementById('svcCategory').value;
+  const lat = parseFloat(document.getElementById('svcLat').value);
+  const lng = parseFloat(document.getElementById('svcLng').value);
+  const errEl = document.getElementById('svcError');
+  errEl.style.display = 'none';
+
+  if (!name || !category) { showError('svcError', 'Name and category are required'); return; }
+  if (isNaN(lat) || isNaN(lng)) { showError('svcError', 'Valid coordinates are required'); return; }
+
+  const btn = document.getElementById('svcBtn');
+  btn.innerHTML = '<div class="spinner" style="display:inline-block;margin:0 auto"></div>';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API}/service/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      credentials: 'include',
+      body: JSON.stringify({
+        name, category,
+        location: { type: 'Point', coordinates: [lng, lat] }
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed');
+
+    showToast('Service created successfully!', 'success');
+    document.getElementById('serviceForm').classList.remove('open');
+    document.getElementById('svcName').value = '';
+    document.getElementById('svcCategory').value = '';
+    document.getElementById('svcLat').value = '';
+    document.getElementById('svcLng').value = '';
+    addServiceToList(data.data?.service);
+  } catch(e) {
+    showError('svcError', e.message);
+  } finally {
+    btn.textContent = 'Create service';
+    btn.disabled = false;
+  }
+}
+
+const categoryEmoji = { Plumbing:'🔧', Electrical:'⚡', Cleaning:'🧹', Carpentry:'🪚', Painting:'🎨', 'AC Repair':'❄️', 'Pest Control':'🐛', Gardening:'🌱', Security:'🔒', Other:'⚙️' };
+
+function addServiceToList(svc) {
+  const list = document.getElementById('myServicesList');
+  const existing = list.querySelector('.empty');
+  if (existing) list.innerHTML = '<div class="item-list" id="svcItemList"></div>';
+  const itemList = list.querySelector('.item-list') || (()=>{ list.innerHTML='<div class="item-list" id="svcItemList"></div>'; return list.querySelector('.item-list'); })();
+
+  const el = document.createElement('div');
+  el.className = 'item-card';
+  el.innerHTML = `
+    <div class="item-icon">${categoryEmoji[svc?.category] || '⚙️'}</div>
+    <div class="item-body">
+      <div class="item-title">${svc?.name || 'New Service'}</div>
+      <div class="item-meta">${svc?.category || ''} · Added just now</div>
+    </div>
+    <span class="status accept">Active</span>
+  `;
+  itemList.prepend(el);
+}
+
+async function loadBookings() {
+  const list = document.getElementById('bookingsList');
+  list.innerHTML = '<div style="display:flex;justify-content:center;padding:40px"><div class="spinner"></div></div>';
+  // Note: Backend doesn't have a GET /booking endpoint for providers
+  // In a real app we'd fetch them. Showing placeholder UI.
+  setTimeout(() => {
+    list.innerHTML = `<div class="empty">
+      <div class="empty-icon">📋</div>
+      <h3>No bookings yet</h3>
+      <p>When customers book your services, they'll appear here. Make sure you've added services first.</p>
+    </div>`;
+    document.getElementById('statBookings').textContent = '0';
+    document.getElementById('statPending').textContent = '0';
+  }, 600);
+}
+
+async function acceptBooking(bookingId, el) {
+  el.disabled = true;
+  el.innerHTML = '<div class="spinner" style="display:inline-block"></div>';
+  try {
+    const res = await fetch(`${API}/booking/accept/${bookingId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed');
+    showToast('Booking accepted!', 'success');
+    el.closest('.item-card').querySelector('.status').className = 'status accept';
+    el.closest('.item-card').querySelector('.status').textContent = 'Accepted';
+    el.remove();
+  } catch(e) {
+    showToast(e.message, 'error');
+    el.textContent = 'Accept';
+    el.disabled = false;
+  }
+}
+
+function filterBookings(status, tabEl) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tabEl.classList.add('active');
+}
+
+function logout() {
+  localStorage.removeItem('nearby_user');
+  window.location.href = 'index.html';
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function showToast(msg, type = 'success') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+init();
+</script>
+</body>
+</html>
