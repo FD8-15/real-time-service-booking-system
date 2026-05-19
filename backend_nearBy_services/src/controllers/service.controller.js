@@ -27,7 +27,7 @@ const createService = asyncHandler(async (req, res) => {
 })
 
 const getService = asyncHandler(async (req, res) => {
-    const { lat, lng, dist = 7000 } = req.body
+    const { lat, lng, dist = 7000 } = req.query
 
     const service = await Service.find({
         location: {

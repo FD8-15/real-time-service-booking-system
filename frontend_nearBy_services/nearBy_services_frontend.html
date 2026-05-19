@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NearBy Services</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface2: #1c1c27;
+      --border: #2a2a3d;
+      --accent: #7c6af7;
+      --accent2: #f7c26a;
+      --text: #e8e8f0;
+      --muted: #6b6b8a;
+      --success: #4ade80;
+      --danger: #f87171;
+      --warning: #fbbf24;
+      --radius: 14px;
+      --transition: 0.25s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Grid noise background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(124, 106, 247, .12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(247, 194, 106, .08) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── LAYOUT ─────────────────────────────────── */
+    .app {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ─── HEADER ─────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10, 10, 15, .85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.35rem;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 14px 6px 8px;
+      font-size: .85rem;
+      color: var(--muted);
+      cursor: default;
+    }
+
+    .user-pill .avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .7rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* ─── MAIN ───────────────────────────────────── */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 0;
+    }
+
+    /* ─── SIDEBAR ────────────────────────────────── */
+    aside {
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      height: calc(100vh - 62px);
+      position: sticky;
+      top: 62px;
+    }
+
+    .section-label {
+      font-family: 'Syne', sans-serif;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 8px 0 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: .9rem;
+      color: var(--muted);
+      transition: all var(--transition);
+      border: 1px solid transparent;
+    }
+
+    .nav-item:hover {
+      background: var(--surface2);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .nav-item.active {
+      background: rgba(124, 106, 247, .15);
+      color: var(--accent);
+      border-color: rgba(124, 106, 247, .3);
+    }
+
+    .nav-item .icon {
+      font-size: 1.1rem;
+      width: 22px;
+      text-align: center;
+    }
+
+    /* ─── CONTENT ────────────────────────────────── */
+    .content {
+      padding: 32px;
+      overflow-y: auto;
+      height: calc(100vh - 62px);
+    }
+
+    /* ─── PANELS ─────────────────────────────────── */
+    .panel {
+      display: none;
+    }
+
+    .panel.active {
+      display: block;
+      animation: fadeUp .35s ease;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ─── PAGE TITLE ─────────────────────────────── */
+    .page-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .page-sub {
+      font-size: .9rem;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    /* ─── CARDS ──────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+      transition: border-color var(--transition);
+    }
+
+    .card:hover {
+      border-color: rgba(124, 106, 247, .35);
+    }
+
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 18px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ─── FORM ───────────────────────────────────── */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 6px;
+      letter-spacing: .3px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .9rem;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124, 106, 247, .15);
+    }
+
+    input[type="file"] {
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    select option {
+      background: var(--surface2);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    /* ─── BUTTONS ────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 9px;
+      font-family: 'Syne', sans-serif;
+      font-size: .88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+      letter-spacing: .2px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #6a58e5;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(124, 106, 247, .3);
+    }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-success {
+      background: rgba(74, 222, 128, .15);
+      color: var(--success);
+      border: 1px solid rgba(74, 222, 128, .3);
+    }
+
+    .btn-success:hover {
+      background: rgba(74, 222, 128, .25);
+    }
+
+    .btn-sm {
+      padding: 6px 14px;
+      font-size: .8rem;
+    }
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .btn-full {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-block {
+      display: flex;
+    }
+
+    /* ─── ALERTS ─────────────────────────────────── */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 9px;
+      font-size: .88rem;
+      margin-bottom: 16px;
+      display: none;
+      animation: fadeUp .3s ease;
+    }
+
+    .alert.show {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .alert-success {
+      background: rgba(74, 222, 128, .1);
+      border: 1px solid rgba(74, 222, 128, .25);
+      color: var(--success);
+    }
+
+    .alert-error {
+      background: rgba(248, 113, 113, .1);
+      border: 1px solid rgba(248, 113, 113, .25);
+      color: var(--danger);
+    }
+
+    .alert-info {
+      background: rgba(124, 106, 247, .1);
+      border: 1px solid rgba(124, 106, 247, .25);
+      color: var(--accent);
+    }
+
+    /* ─── BADGES ─────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: .75rem;
+      font-weight: 600;
+    }
+
+    .badge-pending {
+      background: rgba(251, 191, 36, .12);
+      color: var(--warning);
+    }
+
+    .badge-accept {
+      background: rgba(124, 106, 247, .12);
+      color: var(--accent);
+    }
+
+    .badge-complete {
+      background: rgba(74, 222, 128, .12);
+      color: var(--success);
+    }
+
+    .badge-provider {
+      background: rgba(247, 194, 106, .12);
+      color: var(--accent2);
+    }
+
+    .badge-user {
+      background: rgba(124, 106, 247, .12);
+      color: var(--accent);
+    }
+
+    /* ─── SERVICE CARD ───────────────────────────── */
+    .service-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .service-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: all var(--transition);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .service-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .service-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
+    }
+
+    .service-card:hover::before {
+      opacity: 1;
+    }
+
+    .service-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .service-category {
+      font-size: .8rem;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .service-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* ─── BOOKING LIST ───────────────────────────── */
+    .booking-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: border-color var(--transition);
+      gap: 16px;
+    }
+
+    .booking-item:hover {
+      border-color: rgba(124, 106, 247, .35);
+    }
+
+    .booking-info {
+      flex: 1;
+    }
+
+    .booking-id {
+      font-size: .78rem;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      letter-spacing: .5px;
+      margin-bottom: 4px;
+    }
+
+    .booking-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: .95rem;
+      margin-bottom: 4px;
+    }
+
+    .booking-time {
+      font-size: .78rem;
+      color: var(--muted);
+    }
+
+    .booking-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* ─── LOCATION STATUS ────────────────────────── */
+    .location-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .85rem;
+      color: var(--muted);
+      margin-bottom: 20px;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border-radius: 9px;
+      border: 1px solid var(--border);
+    }
+
+    .location-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background var(--transition);
+    }
+
+    .location-dot.active {
+      background: var(--success);
+      box-shadow: 0 0 0 3px rgba(74, 222, 128, .2);
+    }
+
+    /* ─── NOTIFICATION TOAST ─────────────────────── */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      min-width: 280px;
+      max-width: 360px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+      animation: slideIn .35s cubic-bezier(.4, 0, .2, 1);
+      pointer-events: all;
+    }
+
+    .toast.toast-success {
+      border-left: 4px solid var(--success);
+    }
+
+    .toast.toast-info {
+      border-left: 4px solid var(--accent);
+    }
+
+    .toast-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: .88rem;
+      margin-bottom: 4px;
+    }
+
+    .toast-msg {
+      font-size: .82rem;
+      color: var(--muted);
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    /* ─── LOADER ─────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, .3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ─── EMPTY STATE ────────────────────────────── */
+    .empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+
+    .empty-icon {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+      opacity: .4;
+    }
+
+    .empty-text {
+      font-size: .9rem;
+    }
+
+    /* ─── STAT ROW ───────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+
+    .stat-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 800;
+    }
+
+    .stat-label {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* ─── DIVIDER ────────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 20px 0;
+    }
+
+    /* ─── SOCKET STATUS ──────────────────────────── */
+    .socket-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: .75rem;
+      color: var(--muted);
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface2);
+    }
+
+    .socket-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+
+    .socket-dot.connected {
+      background: var(--success);
+    }
+
+    @media (max-width: 768px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        display: none;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-row {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      header {
+        padding: 14px 18px;
+      }
+
+      .content {
+        padding: 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- HEADER -->
+    <header>
+      <div class="logo">
+        <span class="logo-dot"></span>
+        NearBy Services
+      </div>
+      <div class="nav-actions">
+        <div class="socket-badge" id="socketBadge">
+          <span class="socket-dot" id="socketDot"></span>
+          <span id="socketLabel">Socket</span>
+        </div>
+        <div class="user-pill" id="userPill" style="display:none">
+          <div class="avatar" id="userAvatar">?</div>
+          <span id="userName">–</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <!-- MAIN -->
+    <main>
+
+      <!-- SIDEBAR -->
+      <aside id="sidebar">
+        <div class="section-label">Account</div>
+        <div class="nav-item active" id="nav-register" data-panel="register" onclick="setPanel(this)">
+          <span class="icon">👤</span> Register
+        </div>
+        <div class="nav-item" id="nav-login" data-panel="login" onclick="setPanel(this)">
+          <span class="icon">🔑</span> Login
+        </div>
+        <div class="section-label" style="margin-top:8px">Services</div>
+        <div class="nav-item" data-panel="findServices" onclick="setPanel(this)">
+          <span class="icon">🔍</span> Find Nearby
+        </div>
+        <div class="nav-item" id="nav-createService" data-panel="createService" onclick="setPanel(this)">
+          <span class="icon">➕</span> Create Service
+        </div>
+        <div class="section-label" style="margin-top:8px">Bookings</div>
+        <div class="nav-item" data-panel="myBookings" onclick="setPanel(this)">
+          <span class="icon">📋</span> My Bookings
+        </div>
+      </aside>
+
+      <!-- CONTENT -->
+      <div class="content">
+
+        <!-- ── REGISTER ─────────────────────────── -->
+        <div class="panel active" id="panel-register">
+          <div class="page-title">Create Account</div>
+          <div class="page-sub">Register as a user or service provider.</div>
+
+          <div class="card">
+            <div class="card-title">📝 Registration</div>
+            <div id="registerAlert" class="alert"></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="reg-fullname" placeholder="John Doe">
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="reg-email" placeholder="john@example.com">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="reg-password" placeholder="••••••••">
+              </div>
+              <div class="form-group">
+                <label>Role</label>
+                <select id="reg-role">
+                  <option value="user">👤 User (Book Services)</option>
+                  <option value="provider">🔧 Provider (Offer Services)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Profile Image</label>
+              <input type="file" id="reg-profileImg" accept="image/*">
+            </div>
+            <button type="button" class="btn btn-primary btn-full" onclick="register(event)" id="registerBtn">
+              Create Account
+            </button>
+          </div>
+        </div>
+
+        <!-- ── LOGIN ───────────────────────────── -->
+        <div class="panel" id="panel-login">
+          <div class="page-title">Welcome Back</div>
+          <div class="page-sub">Sign in to your NearBy Services account.</div>
+
+          <div class="card">
+            <div class="card-title">🔑 Sign In</div>
+            <div id="loginAlert" class="alert"></div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="login-email" placeholder="john@example.com">
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="login-password" placeholder="••••••••">
+            </div>
+            <button type="button" class="btn btn-primary btn-full" onclick="login(event)" id="loginBtn">
+              Sign In
+            </button>
+          </div>
+        </div>
+
+        <!-- ── FIND SERVICES ────────────────────── -->
+        <div class="panel" id="panel-findServices">
+          <div class="page-title">Find Nearby Services</div>
+          <div class="page-sub">Discover service providers around your location.</div>
+
+          <div class="card">
+            <div class="card-title">📍 Search Location</div>
+            <div class="location-status" id="locationStatus">
+              <span class="location-dot" id="locationDot"></span>
+              <span id="locationText">Location not detected</span>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Latitude</label>
+                <input type="number" id="search-lat" placeholder="e.g. 19.0760" step="any">
+              </div>
+              <div class="form-group">
+                <label>Longitude</label>
+                <input type="number" id="search-lng" placeholder="e.g. 72.8777" step="any">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Max Distance (meters)</label>
+              <input type="number" id="search-dist" value="7000" placeholder="7000">
+            </div>
+            <div style="display:flex;gap:10px">
+              <button class="btn btn-secondary" onclick="detectLocation()">📍 Auto Detect</button>
+              <button class="btn btn-primary" onclick="findServices()" id="searchBtn">🔍 Search</button>
+            </div>
+          </div>
+
+          <div id="serviceAlert" class="alert"></div>
+          <div id="servicesContainer"></div>
+        </div>
+
+        <!-- ── CREATE SERVICE ────────────────────── -->
+        <div class="panel" id="panel-createService">
+          <div class="page-title">Create Service</div>
+          <div class="page-sub">List your service for users to discover and book.</div>
+
+          <div class="card">
+            <div class="card-title">🔧 Service Details</div>
+            <div id="createServiceAlert" class="alert"></div>
+            <div class="form-group">
+              <label>Service Name</label>
+              <input type="text" id="svc-name" placeholder="e.g. AC Repair, Plumbing...">
+            </div>
+            <div class="form-group">
+              <label>Category</label>
+              <select id="svc-category">
+                <option value="plumbing">🔧 Plumbing</option>
+                <option value="electrical">⚡ Electrical</option>
+                <option value="cleaning">🧹 Cleaning</option>
+                <option value="carpentry">🪚 Carpentry</option>
+                <option value="painting">🎨 Painting</option>
+                <option value="hvac">❄️ AC / HVAC</option>
+                <option value="landscaping">🌿 Landscaping</option>
+                <option value="appliance">🏠 Appliance Repair</option>
+                <option value="pest">🐛 Pest Control</option>
+                <option value="other">📦 Other</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Latitude</label>
+                <input type="number" id="svc-lat" placeholder="e.g. 19.0760" step="any">
+              </div>
+              <div class="form-group">
+                <label>Longitude</label>
+                <input type="number" id="svc-lng" placeholder="e.g. 72.8777" step="any">
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-bottom:16px">
+              <button class="btn btn-secondary" onclick="detectLocationForService()">📍 Use My Location</button>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="createService()" id="createServiceBtn">
+              Create Service
+            </button>
+          </div>
+        </div>
+
+        <!-- ── MY BOOKINGS ───────────────────────── -->
+        <div class="panel" id="panel-myBookings">
+          <div class="page-title">Bookings</div>
+          <div class="page-sub">Manage and track your service bookings.</div>
+
+          <div class="stats-row" id="bookingStats" style="display:none">
+            <div class="stat-card">
+              <div class="stat-value" id="statPending">–</div>
+              <div class="stat-label">Pending</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="statAccepted">–</div>
+              <div class="stat-label">Accepted</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="statComplete">–</div>
+              <div class="stat-label">Completed</div>
+            </div>
+          </div>
+
+          <div id="bookingAlert" class="alert"></div>
+
+          <!-- Book a service (users) -->
+          <div class="card" id="bookCard" style="display:none">
+            <div class="card-title">📅 Book a Service</div>
+            <div class="form-group">
+              <label>Service ID</label>
+              <input type="text" id="book-serviceId" placeholder="Paste service ID from search results">
+            </div>
+            <button class="btn btn-primary" onclick="createBooking()" id="bookBtn">Book Now</button>
+          </div>
+
+          <div id="bookingsContainer">
+            <div class="empty">
+              <div class="empty-icon">📋</div>
+              <div class="empty-text">Login to view your bookings</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /.content -->
+    </main>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    // ─── CONFIG ──────────────────────────────────────
+    const BASE = 'http://localhost:3000/api'; // Backend runs on port 3000
+    let authToken = localStorage.getItem('nbs_token') || null;
+    let currentUser = JSON.parse(localStorage.getItem('nbs_user') || 'null');
+    let socket = null;
+
+    // ─── SOCKET.IO ────────────────────────────────────
+    function initSocket(userId) {
+      if (socket) socket.disconnect();
+      // Backend server.js has CORS origin: "http://127.0.0.1:5500" (Live Server default)
+      // Make sure you open this file via Live Server (127.0.0.1:5500) not localhost:5500
+      socket = io('http://localhost:3000', { withCredentials: true });
+
+      socket.on('connect', () => {
+        socket.emit('join_room', userId);
+        updateSocketStatus(true);
+      });
+      socket.on('disconnect', () => updateSocketStatus(false));
+
+      // Provider receives this when a user books their service
+      socket.on('booking created', (data) => {
+        showToast('📬 New Booking', `Booking #${data.booking._id.slice(-6)} received!`, 'info');
+        // Add booking to provider's local list so they can accept it
+        if (currentUser?.role === 'provider') {
+          bookings.unshift(data.booking);
+          const bookingsPanel = document.getElementById('panel-myBookings');
+          if (bookingsPanel.classList.contains('active')) renderBookings();
+        }
+      });
+
+      // User receives this when provider accepts their booking
+      socket.on('accept booking', (data) => {
+        showToast('✅ Booking Accepted', `Your booking was accepted! Category: ${data.category}`, 'success');
+        const b = bookings.find(b => String(b.service) === String(data.service));
+        if (b) { b.status = 'accept'; renderBookings(); }
+      });
+
+      // User receives this when provider marks service complete
+      socket.on('compleated', (data) => {
+        showToast('🎉 Service Completed', `Service completed! Category: ${data.category}`, 'success');
+        const b = bookings.find(b => String(b.service) === String(data.service));
+        if (b) { b.status = 'complete'; renderBookings(); }
+      });
+    }
+
+    function updateSocketStatus(connected) {
+      const dot = document.getElementById('socketDot');
+      const label = document.getElementById('socketLabel');
+      dot.className = 'socket-dot' + (connected ? ' connected' : '');
+      label.textContent = connected ? 'Live' : 'Offline';
+    }
+
+    // ─── NAV ──────────────────────────────────────────
+    function setPanel(el) {
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      el.classList.add('active');
+      const name = el.dataset.panel;
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-' + name).classList.add('active');
+      if (name === 'myBookings') renderBookings();
+    }
+
+    // ─── ALERTS ───────────────────────────────────────
+    function showAlert(id, msg, type = 'error') {
+      const el = document.getElementById(id);
+      el.className = `alert alert-${type} show`;
+      el.innerHTML = (type === 'error' ? '⚠️ ' : type === 'success' ? '✅ ' : 'ℹ️ ') + msg;
+    }
+    function hideAlert(id) {
+      document.getElementById(id).className = 'alert';
+    }
+
+    // ─── TOAST ────────────────────────────────────────
+    function showToast(title, msg, type = 'info') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = `toast toast-${type}`;
+      t.innerHTML = `<div class="toast-title">${title}</div><div class="toast-msg">${msg}</div>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+
+    // ─── AUTH STATE ───────────────────────────────────
+    function updateUI() {
+      const pill = document.getElementById('userPill');
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (currentUser && authToken) {
+        pill.style.display = 'flex';
+        logoutBtn.style.display = 'inline-flex';
+        document.getElementById('userName').textContent = currentUser.fullname?.split(' ')[0] || currentUser.email;
+        document.getElementById('userAvatar').textContent = (currentUser.fullname || currentUser.email)[0].toUpperCase();
+
+        const isUser = currentUser.role === 'user';
+        const isProvider = currentUser.role === 'provider';
+
+        // Book card: only users can book
+        document.getElementById('bookCard').style.display = isUser ? 'block' : 'none';
+
+        // Create Service nav: only providers can create services
+        document.getElementById('nav-createService').style.display = isProvider ? 'flex' : 'none';
+
+        // Find Nearby nav: both can browse, but providers just can't book
+        // Register/Login nav: hide when logged in
+        document.getElementById('nav-register').style.display = 'none';
+        document.getElementById('nav-login').style.display = 'none';
+
+      } else {
+        pill.style.display = 'none';
+        logoutBtn.style.display = 'none';
+        document.getElementById('bookCard').style.display = 'none';
+
+        // Show register/login, hide service management when logged out
+        document.getElementById('nav-register').style.display = 'flex';
+        document.getElementById('nav-login').style.display = 'flex';
+        document.getElementById('nav-createService').style.display = 'none';
+      }
+    }
+
+    function logout() {
+      authToken = null;
+      currentUser = null;
+      localStorage.removeItem('nbs_token');
+      localStorage.removeItem('nbs_user');
+      if (socket) { socket.disconnect(); socket = null; }
+      updateSocketStatus(false);
+      updateUI();
+      showToast('👋 Logged out', 'See you soon!', 'info');
+      setPanel(document.getElementById('nav-login'));
+    }
+
+    // ─── REGISTER ─────────────────────────────────────
+    async function register(e) { if (e) e.preventDefault();
+      hideAlert('registerAlert');
+      const fullname = document.getElementById('reg-fullname').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const role = document.getElementById('reg-role').value;
+      const file = document.getElementById('reg-profileImg').files[0];
+
+      if (!fullname || !email || !password || !file) {
+        showAlert('registerAlert', 'All fields including profile image are required.');
+        return;
+      }
+
+      const btn = document.getElementById('registerBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Creating...';
+
+      const formData = new FormData();
+      formData.append('fullname', fullname);
+      formData.append('email', email);
+      formData.append('password', password);
+      formData.append('role', role);
+      formData.append('profileImg', file);
+
+      try {
+        const res = await fetch(`${BASE}/users/register`, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok && data.success !== false) {
+          showAlert('registerAlert', 'Account created! You can now login.', 'success');
+          showToast('🎉 Welcome!', 'Account created successfully', 'success');
+        } else {
+          showAlert('registerAlert', data.message || 'Registration failed.');
+        }
+      } catch (e) {
+        showAlert('registerAlert', 'Cannot connect to server. Make sure backend is running on port 3000.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    }
+
+    // ─── LOGIN ────────────────────────────────────────
+    async function login(e) { if (e) e.preventDefault();
+      hideAlert('loginAlert');
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      if (!email || !password) {
+        showAlert('loginAlert', 'Email and password are required.');
+        return;
+      }
+
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Signing in...';
+
+      try {
+        const res = await fetch(`${BASE}/users/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          authToken = data.accessToken;
+          currentUser = data.user;
+          localStorage.setItem('nbs_token', authToken);
+          localStorage.setItem('nbs_user', JSON.stringify(currentUser));
+          updateUI();
+          initSocket(currentUser._id);
+          showToast('👋 Welcome back!', `Hello, ${currentUser.fullname.split(' ')[0]}`, 'success');
+          setPanel(document.querySelector('[data-panel="findServices"]'));
+        } else {
+          showAlert('loginAlert', data.message || 'Login failed. Check your credentials.');
+        }
+      } catch (e) {
+        showAlert('loginAlert', 'Cannot connect to server. Make sure backend is running on port 3000.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+      }
+    }
+
+    // ─── LOCATION ─────────────────────────────────────
+    function detectLocation() {
+      const dot = document.getElementById('locationDot');
+      const text = document.getElementById('locationText');
+      text.textContent = 'Detecting...';
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          document.getElementById('search-lat').value = pos.coords.latitude;
+          document.getElementById('search-lng').value = pos.coords.longitude;
+          dot.classList.add('active');
+          text.textContent = `📍 ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+        },
+        () => { text.textContent = 'Location access denied'; }
+      );
+    }
+    function detectLocationForService() {
+      navigator.geolocation.getCurrentPosition(pos => {
+        document.getElementById('svc-lat').value = pos.coords.latitude;
+        document.getElementById('svc-lng').value = pos.coords.longitude;
+        showToast('📍 Location Set', `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`, 'success');
+      });
+    }
+
+    // ─── FIND SERVICES ────────────────────────────────
+    async function findServices() {
+      hideAlert('serviceAlert');
+      const lat = document.getElementById('search-lat').value;
+      const lng = document.getElementById('search-lng').value;
+      const dist = document.getElementById('search-dist').value || 7000;
+
+      if (!lat || !lng) {
+        showAlert('serviceAlert', 'Please enter or detect your location first.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('searchBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Searching...';
+
+      try {
+        // Backend: router.route("/get").post(getService) — controller reads req.query
+        // Route is POST but reads query params from URL — send as POST with query string
+        const res = await fetch(`${BASE}/service/get?lat=${lat}&lng=${lng}&dist=${dist}`, {
+          method: 'POST',
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (res.ok) {
+          renderServices(data.data?.service || []);
+        } else {
+          showAlert('serviceAlert', data.message || 'Search failed.');
+        }
+      } catch (e) {
+        showAlert('serviceAlert', 'Cannot connect to server.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔍 Search';
+      }
+    }
+
+    function renderServices(services) {
+      const container = document.getElementById('servicesContainer');
+      if (!services.length) {
+        container.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">No services found nearby. Try increasing the distance.</div></div>`;
+        return;
+      }
+      const catEmoji = { plumbing: '🔧', electrical: '⚡', cleaning: '🧹', carpentry: '🪚', painting: '🎨', hvac: '❄️', landscaping: '🌿', appliance: '🏠', pest: '🐛', other: '📦' };
+      container.innerHTML = `<div class="service-grid">${services.map(s => `
+    <div class="service-card">
+      <div style="font-size:1.8rem;margin-bottom:10px">${catEmoji[s.category] || '📦'}</div>
+      <div class="service-name">${s.name}</div>
+      <div class="service-category">${s.category}</div>
+      <div class="service-meta">
+        <span class="badge badge-provider" title="Provider ID: ${s.provider}">Provider</span>
+        ${authToken && currentUser?.role === 'user' ?
+          `<button class="btn btn-success btn-sm" onclick="bookDirect('${s._id}')">Book</button>` :
+          authToken && currentUser?.role === 'provider' ?
+          `<span class="badge badge-provider" style="font-size:.7rem">Your platform</span>` :
+          `<span class="badge" style="background:var(--surface2);color:var(--muted);font-size:.7rem">Login to book</span>`
+        }
+      </div>
+    </div>`).join('')}</div>`;
+    }
+
+    function bookDirect(serviceId) {
+      document.getElementById('book-serviceId').value = serviceId;
+      setPanel(document.querySelector('[data-panel="myBookings"]'));
+      // Scroll to and highlight the book form
+      setTimeout(() => {
+        const bookCard = document.getElementById('bookCard');
+        if (bookCard) bookCard.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+
+    // ─── CREATE SERVICE ───────────────────────────────
+    async function createService() {
+      hideAlert('createServiceAlert');
+      if (!authToken) {
+        showAlert('createServiceAlert', 'You must be logged in as a provider.');
+        return;
+      }
+      if (currentUser?.role !== 'provider') {
+        showAlert('createServiceAlert', 'Only providers can create services.');
+        return;
+      }
+
+      const name = document.getElementById('svc-name').value.trim();
+      const category = document.getElementById('svc-category').value;
+      const lat = document.getElementById('svc-lat').value;
+      const lng = document.getElementById('svc-lng').value;
+
+      if (!name || !lat || !lng) {
+        showAlert('createServiceAlert', 'Service name, latitude and longitude are required.');
+        return;
+      }
+
+      const btn = document.getElementById('createServiceBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Creating...';
+
+      try {
+        const res = await fetch(`${BASE}/service/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            name,
+            category,
+            location: {
+              type: 'Point',
+              coordinates: [parseFloat(lng), parseFloat(lat)]
+            }
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showAlert('createServiceAlert', 'Service created successfully!', 'success');
+          showToast('✅ Service Live', `${name} is now listed`, 'success');
+          document.getElementById('svc-name').value = '';
+        } else {
+          showAlert('createServiceAlert', data.message || 'Failed to create service.');
+        }
+      } catch (e) {
+        showAlert('createServiceAlert', 'Cannot connect to server.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Service';
+      }
+    }
+
+    // ─── BOOKINGS ─────────────────────────────────────
+    let bookings = [];
+
+    async function createBooking() {
+      hideAlert('bookingAlert');
+      if (!authToken) {
+        showAlert('bookingAlert', 'Please login first.');
+        return;
+      }
+      const serviceId = document.getElementById('book-serviceId').value.trim();
+      if (!serviceId) {
+        showAlert('bookingAlert', 'Please enter a Service ID.');
+        return;
+      }
+
+      const btn = document.getElementById('bookBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Booking...';
+
+      try {
+        const res = await fetch(`${BASE}/booking/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          credentials: 'include',
+          body: JSON.stringify({ ServiceId: serviceId })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showAlert('bookingAlert', 'Booking created! Waiting for provider to accept.', 'success');
+          showToast('📅 Booked!', 'Your booking is pending approval', 'info');
+          document.getElementById('book-serviceId').value = '';
+          if (data.data) bookings.unshift(data.data);
+          renderBookings();
+        } else {
+          showAlert('bookingAlert', data.message || 'Booking failed.');
+        }
+      } catch (e) {
+        showAlert('bookingAlert', 'Cannot connect to server.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Book Now';
+      }
+    }
+
+    async function acceptBooking(id) {
+      if (!authToken) return;
+      try {
+        const res = await fetch(`${BASE}/booking/accept/${id}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${authToken}` },
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('✅ Accepted', 'Booking accepted successfully', 'success');
+          const b = bookings.find(b => b._id === id);
+          if (b) b.status = 'accept';
+          renderBookings();
+        } else {
+          showToast('⚠️ Error', data.message || 'Failed', 'info');
+        }
+      } catch (e) {
+        showToast('⚠️ Error', 'Cannot connect to server', 'info');
+      }
+    }
+
+    async function completeBooking(id) {
+      if (!authToken) return;
+      try {
+        const res = await fetch(`${BASE}/booking/compleate/${id}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${authToken}` },
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('🎉 Completed', 'Service marked as complete!', 'success');
+          const b = bookings.find(b => b._id === id);
+          if (b) b.status = 'complete';
+          renderBookings();
+        } else {
+          showToast('⚠️ Error', data.message || 'Failed', 'info');
+        }
+      } catch (e) {
+        showToast('⚠️ Error', 'Cannot connect to server', 'info');
+      }
+    }
+
+    function renderBookings() {
+      const container = document.getElementById('bookingsContainer');
+      const statsRow = document.getElementById('bookingStats');
+
+      if (!authToken || !currentUser) {
+        container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Login to view your bookings</div></div>`;
+        statsRow.style.display = 'none';
+        return;
+      }
+
+      // Filter: users see only their own bookings, providers see only their received bookings
+      const myBookings = bookings.filter(b => {
+        if (currentUser.role === 'user') {
+          return String(b.user) === String(currentUser._id) || String(b.user?._id) === String(currentUser._id);
+        } else {
+          return String(b.provider) === String(currentUser._id) || String(b.provider?._id) === String(currentUser._id);
+        }
+      });
+
+      if (!myBookings.length) {
+        container.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">No bookings yet. ${currentUser.role === 'user' ? 'Search for services and book one!' : 'Bookings from users will appear here in real-time.'}</div></div>`;
+        statsRow.style.display = 'none';
+        return;
+      }
+
+      const pending = myBookings.filter(b => b.status === 'pending').length;
+      const accepted = myBookings.filter(b => b.status === 'accept').length;
+      const complete = myBookings.filter(b => b.status === 'complete').length;
+
+      statsRow.style.display = 'grid';
+      document.getElementById('statPending').textContent = pending;
+      document.getElementById('statAccepted').textContent = accepted;
+      document.getElementById('statComplete').textContent = complete;
+
+      container.innerHTML = myBookings.map(b => {
+        const statusBadge = `<span class="badge badge-${b.status}">${b.status === 'accept' ? '✔ Accepted' : b.status === 'complete' ? '🎉 Complete' : '⏳ Pending'}</span>`;
+        const actions = currentUser.role === 'provider' ? `
+      <div class="booking-actions">
+        ${b.status === 'pending' ? `<button class="btn btn-secondary btn-sm" onclick="acceptBooking('${b._id}')">Accept</button>` : ''}
+        ${b.status === 'accept' ? `<button class="btn btn-success btn-sm" onclick="completeBooking('${b._id}')">Complete</button>` : ''}
+      </div>` : '';
+        return `<div class="booking-item">
+      <div class="booking-info">
+        <div class="booking-id">ID: ${b._id}</div>
+        <div class="booking-title">Service: ${b.service?.name || b.service || '—'}</div>
+        <div class="booking-time">${new Date(b.createdAt || Date.now()).toLocaleString()}</div>
+      </div>
+      ${statusBadge}
+      ${actions}
+    </div>`;
+      }).join('');
+    }
+
+    // ─── INIT ─────────────────────────────────────────
+    // ⚠️ IMPORTANT: Backend CORS is set to "http://127.0.0.1:5500"
+    // Open this file using VS Code Live Server (127.0.0.1:5500), NOT localhost:5500
+    // If you see CORS errors, check backend app.js and server.js cors.origin setting
+    if (window.location.hostname === 'localhost' && window.location.port === '5500') {
+      console.warn('⚠️ Backend CORS expects 127.0.0.1:5500 but you are on localhost:5500. Socket.io and credentials may fail.');
+    }
+    updateUI();
+    if (currentUser && authToken) {
+      initSocket(currentUser._id);
+    }
+    updateSocketStatus(false);
+  </script>
+</body>
+
+</html>
