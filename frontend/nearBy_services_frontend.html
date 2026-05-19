@@ -8,7 +8,6 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
     rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
   <style>
     :root {
       --bg: #0a0a0f;
@@ -757,8 +756,8 @@
       }
     }
   </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 </head>
-
 <body>
   <div class="app">
 
@@ -999,10 +998,9 @@
 
   <!-- TOAST CONTAINER -->
   <div class="toast-container" id="toastContainer"></div>
-
   <script>
     // ─── CONFIG ──────────────────────────────────────
-    const BASE = 'http://localhost:3000/api'; // Backend runs on port 3000
+    const BASE = 'https://real-time-service-booking-system.onrender.com'; // Backend runs on port 3000
     let authToken = localStorage.getItem('nbs_token') || null;
     let currentUser = JSON.parse(localStorage.getItem('nbs_user') || 'null');
     let socket = null;
@@ -1012,7 +1010,7 @@
       if (socket) socket.disconnect();
       // Backend server.js has CORS origin: "http://127.0.0.1:5500" (Live Server default)
       // Make sure you open this file via Live Server (127.0.0.1:5500) not localhost:5500
-      socket = io('http://localhost:3000', { withCredentials: true });
+      socket = io('https://real-time-service-booking-system.onrender.com', { withCredentials: true });
 
       socket.on('connect', () => {
         socket.emit('join_room', userId);
@@ -1132,7 +1130,8 @@
     }
 
     // ─── REGISTER ─────────────────────────────────────
-    async function register(e) { if (e) e.preventDefault();
+    async function register(e) {
+      if (e) e.preventDefault();
       hideAlert('registerAlert');
       const fullname = document.getElementById('reg-fullname').value.trim();
       const email = document.getElementById('reg-email').value.trim();
@@ -1177,7 +1176,8 @@
     }
 
     // ─── LOGIN ────────────────────────────────────────
-    async function login(e) { if (e) e.preventDefault();
+    async function login(e) {
+      if (e) e.preventDefault();
       hideAlert('loginAlert');
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
@@ -1296,8 +1296,8 @@
         ${authToken && currentUser?.role === 'user' ?
           `<button class="btn btn-success btn-sm" onclick="bookDirect('${s._id}')">Book</button>` :
           authToken && currentUser?.role === 'provider' ?
-          `<span class="badge badge-provider" style="font-size:.7rem">Your platform</span>` :
-          `<span class="badge" style="background:var(--surface2);color:var(--muted);font-size:.7rem">Login to book</span>`
+            `<span class="badge badge-provider" style="font-size:.7rem">Your platform</span>` :
+            `<span class="badge" style="background:var(--surface2);color:var(--muted);font-size:.7rem">Login to book</span>`
         }
       </div>
     </div>`).join('')}</div>`;
