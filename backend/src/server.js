@@ -1,4 +1,5 @@
 import { Server } from "socket.io";
+
 let io;
 const onlineUsers = new Map();
 
@@ -10,28 +11,30 @@ const initSocket = (server) => {
         "https://nearbyservice24.netlify.app"
     ];
 
-    io.on("connection", (socket) => {
+    io = new Server(server, {
+        cors: {
+            origin: allowedOrigins,
+            credentials: true
+        }
+    });
 
+    io.on("connection", (socket) => {
         console.log("User Connected");
 
         socket.on("join_room", (userId) => {
             socket.join(userId);
             onlineUsers.set(socket.id, userId);
             console.log(`Joined room ${userId}`);
-            console.log(`${userId} is online`);
         });
 
         socket.on("disconnect", () => {
             const userId = onlineUsers.get(socket.id);
             onlineUsers.delete(socket.id);
             console.log(`${userId} is offline`);
-            console.log("User disconnected");
         });
     });
 };
 
-const getIO = () => {
-    return io;
-};
+const getIO = () => io;
 
 export { initSocket, getIO };
