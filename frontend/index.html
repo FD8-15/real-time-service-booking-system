@@ -1000,7 +1000,7 @@
   <div class="toast-container" id="toastContainer"></div>
   <script>
     // ─── CONFIG ──────────────────────────────────────
-    const BASE = 'https://real-time-service-booking-system.onrender.com'; // Backend runs on port 3000
+    const BASE = 'https://real-time-service-booking-system.onrender.com/api'; // Backend runs on port 3000
     let authToken = localStorage.getItem('nbs_token') || null;
     let currentUser = JSON.parse(localStorage.getItem('nbs_user') || 'null');
     let socket = null;
@@ -1010,7 +1010,7 @@
       if (socket) socket.disconnect();
       // Backend server.js has CORS origin: "http://127.0.0.1:5500" (Live Server default)
       // Make sure you open this file via Live Server (127.0.0.1:5500) not localhost:5500
-      socket = io('https://real-time-service-booking-system.onrender.com', { withCredentials: true });
+      socket = io('https://real-time-service-booking-system.onrender.com/api', { withCredentials: true });
 
       socket.on('connect', () => {
         socket.emit('join_room', userId);
