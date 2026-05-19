@@ -207,4 +207,4 @@ GitHub: [https://github.com/FD8-15](https://github.com/FD8-15)
 
 # License
 
-This project is for learning and educational pur
+This project is for learning and educational purposes.
